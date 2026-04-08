@@ -1,8 +1,16 @@
 [
     {
-        "bedrijf": "hello",
-        "contact": "test",
+        "bedrijf": "ezzez",
+        "contact": "eZez",
         "status": "Gecontacteerd",
         "prioriteit": "Hoog"
+    },
+    {
+        "bedrijf": "ferf",
+        "contact": "fef",
+        "email": "amina@fre",
+        "telefoon": "0471432754",
+        "status": "Gecontacteerd",
+        "prioriteit": "Laag"
     }
 ]
