@@ -1,1 +1,8 @@
-[]
+[
+    {
+        "bedrijf": "hello",
+        "contact": "test",
+        "status": "Gecontacteerd",
+        "prioriteit": "Hoog"
+    }
+]
