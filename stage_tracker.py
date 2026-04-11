@@ -1,4 +1,5 @@
 import os
+import datetime
 from tabulate import tabulate
 import data_manager
 from fpdf import FPDF
@@ -13,12 +14,25 @@ def toon_tabel(data, titel="ACTUEEL OVERZICHT"):
         print("\n[INFO] De tracker is nog leeg.")
         return
 
-    # We voegen Email en Telefoon toe aan de headers
-    headers = ["ID", "BEDRIJF", "CONTACT", "EMAIL", "TELEFOON", "STATUS", "PRIORITEIT"]
+    headers = ["ID", "BEDRIJF", "CONTACT", "EMAIL", "TELEFOON", "STATUS", "LAATST CONTACT", "ALERT"]
     tabel_data = []
+    vandaag = datetime.date.today()
 
     for i, d in enumerate(data):
-        # We gebruiken .get() om te voorkomen dat oude data (zonder email/tel) het script doet crashen
+        # Datum berekening voor de Alert
+        last_date_str = d.get('datum', str(vandaag))
+        try:
+            last_date = datetime.datetime.strptime(last_date_str, '%Y-%m-%d').date()
+        except:
+            last_date = vandaag
+
+        dagen_geleden = (vandaag - last_date).days
+
+        # Alert logica: als status 'Gecontacteerd' is en > 7 dagen geleden
+        alert = ""
+        if d.get('status') == "Gecontacteerd" and dagen_geleden > 7:
+            alert = f"/!\ FOLLOW-UP ({dagen_geleden}d)"
+
         tabel_data.append([
             i,
             d.get('bedrijf', '-'),
@@ -26,7 +40,8 @@ def toon_tabel(data, titel="ACTUEEL OVERZICHT"):
             d.get('email', '-'),
             d.get('telefoon', '-'),
             d.get('status', '-'),
-            d.get('prioriteit', '-')
+            last_date_str,
+            alert
         ])
 
     print(f"\n--- {titel} ---")
@@ -65,7 +80,7 @@ def exporteer_naar_pdf(data):
     pdf.cell(50, 10, "Email", 1)
     pdf.cell(35, 10, "Telefoon", 1)
     pdf.cell(45, 10, "Status", 1)
-    pdf.cell(30, 10, "Prioriteit", 1)
+    pdf.cell(30, 10, "Datum", 1)
     pdf.ln()
 
     # Data rijen
@@ -76,7 +91,7 @@ def exporteer_naar_pdf(data):
         pdf.cell(50, 10, str(d.get('email', '-')), 1)
         pdf.cell(35, 10, str(d.get('telefoon', '-')), 1)
         pdf.cell(45, 10, str(d.get('status', '-')), 1)
-        pdf.cell(30, 10, str(d.get('prioriteit', '-')), 1)
+        pdf.cell(30, 10, str(d.get('datum', '-')), 1)
         pdf.ln()
 
     pdf.output("Stage_Rapport.pdf")
@@ -89,7 +104,7 @@ def main():
     while True:
         clear_screen()
         print("="*90)
-        print("                             STAGE-TRACKER - SEARCH ENABLED")
+        print("                             STAGE-TRACKER")
         print("="*90)
 
         toon_tabel(data)
@@ -107,10 +122,12 @@ def main():
             telefoon = input("Telefoon: ")
             status = "Gecontacteerd"
             prioriteit = input("Prioriteit (Hoog/Medium/Laag): ").capitalize()
+            vandaag = str(datetime.date.today())
 
             data.append({
                 "bedrijf": bedrijf, "contact": contact, "email": email,
-                "telefoon": telefoon, "status": status, "prioriteit": prioriteit
+                "telefoon": telefoon, "status": status, "prioriteit": prioriteit,
+                "datum": vandaag
             })
             data_manager.save_data(data)
 
@@ -118,6 +135,7 @@ def main():
             try:
                 idx = int(input("ID voor status update: "))
                 data[idx]['status'] = input("Nieuwe status: ")
+                data[idx]['datum'] = str(datetime.date.today()) # Datum reset bij actie
                 data_manager.save_data(data)
             except: print("[FOUT] Ongeldig ID.")
 
