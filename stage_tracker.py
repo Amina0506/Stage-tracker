@@ -1,5 +1,4 @@
 import os
-import sys
 from tabulate import tabulate
 import data_manager
 from fpdf import FPDF
@@ -8,17 +7,8 @@ def clear_screen():
     """Maakt de terminal leeg voor een propere interface."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def get_valid_priority():
-    """Dwingt de gebruiker om een juiste prioriteit te kiezen."""
-    geldige_opties = ["Hoog", "Medium", "Laag"]
-    while True:
-        prio = input("Prioriteit (Hoog/Medium/Laag): ").capitalize()
-        if prio in geldige_opties:
-            return prio
-        print(f"[FOUT] '{prio}' is ongeldig. Kies uit: Hoog, Medium of Laag.")
-
-def toon_tabel(data):
-    """Toont de tabel inclusief contactgegevens."""
+def toon_tabel(data, titel="ACTUEEL OVERZICHT"):
+    """Universele functie om data in tabelvorm te tonen."""
     if not data:
         print("\n[INFO] De tracker is nog leeg.")
         return
@@ -31,15 +21,29 @@ def toon_tabel(data):
         # We gebruiken .get() om te voorkomen dat oude data (zonder email/tel) het script doet crashen
         tabel_data.append([
             i,
-            d['bedrijf'],
-            d['contact'],
+            d.get('bedrijf', '-'),
+            d.get('contact', '-'),
             d.get('email', '-'),
             d.get('telefoon', '-'),
-            d['status'],
-            d['prioriteit']
+            d.get('status', '-'),
+            d.get('prioriteit', '-')
         ])
 
-    print("\n" + tabulate(tabel_data, headers=headers, tablefmt="fancy_grid"))
+    print(f"\n--- {titel} ---")
+    print(tabulate(tabel_data, headers=headers, tablefmt="fancy_grid"))
+
+def zoek_bedrijf(data):
+    """Zoekt naar bedrijven of contactpersonen in de lijst."""
+    zoekterm = input("\nVoer een zoekterm in (Bedrijf of Contact): ").lower()
+    resultaten = [d for d in data if zoekterm in d['bedrijf'].lower() or zoekterm in d['contact'].lower()]
+
+    if resultaten:
+        clear_screen()
+        toon_tabel(resultaten, titel=f"ZOEKRESULTATEN VOOR: '{zoekterm}'")
+    else:
+        print(f"\n[!] Geen resultaten gevonden voor '{zoekterm}'.")
+
+    input("\nDruk op Enter om terug te gaan...")
 
 def exporteer_naar_pdf(data):
     """Genereert een PDF rapport met alle contactgegevens."""
@@ -67,17 +71,17 @@ def exporteer_naar_pdf(data):
     # Data rijen
     pdf.set_font("Arial", size=9)
     for d in data:
-        pdf.cell(35, 10, str(d['bedrijf']), 1)
-        pdf.cell(35, 10, str(d['contact']), 1)
+        pdf.cell(35, 10, str(d.get('bedrijf', '-')), 1)
+        pdf.cell(35, 10, str(d.get('contact', '-')), 1)
         pdf.cell(50, 10, str(d.get('email', '-')), 1)
         pdf.cell(35, 10, str(d.get('telefoon', '-')), 1)
-        pdf.cell(45, 10, str(d['status']), 1)
-        pdf.cell(30, 10, str(d['prioriteit']), 1)
+        pdf.cell(45, 10, str(d.get('status', '-')), 1)
+        pdf.cell(30, 10, str(d.get('prioriteit', '-')), 1)
         pdf.ln()
 
-    pdf.output("Stage_Rapport_Gedetailleerd.pdf")
-    print("\n[SUCCES] Gedetailleerd rapport gegenereerd: Stage_Rapport_Gedetailleerd.pdf")
-    input("Druk op Enter om door te gaan...")
+    pdf.output("Stage_Rapport.pdf")
+    print("\n[SUCCES] Rapport gegenereerd: Stage_Rapport.pdf")
+    input("Enter...")
 
 def main():
     data = data_manager.load_data()
@@ -85,63 +89,52 @@ def main():
     while True:
         clear_screen()
         print("="*90)
-        print("                STAGE-TRACKER CRM v4.0 - CONTACT MANAGEMENT")
+        print("                             STAGE-TRACKER - SEARCH ENABLED")
         print("="*90)
 
         toon_tabel(data)
 
         print("\nOPTIES:")
-        print("1. Toevoegen | 2. Update Status | 3. Verwijderen | 4. Export PDF | 5. Exit")
+        print("1. Toevoegen | 2. Update Status | 3. Verwijderen | 4. Zoeken | 5. Export PDF | 6. Exit")
         print("-" * 90)
 
         keuze = input("Maak een keuze: ")
 
         if keuze == '1':
-            bedrijf = input("Naam bedrijf: ")
-            contact = input("Naam contactpersoon: ")
-            email = input("E-mailadres: ")
-            telefoon = input("Telefoonnummer: ")
+            bedrijf = input("Bedrijf: ")
+            contact = input("Contactpersoon: ")
+            email = input("Email: ")
+            telefoon = input("Telefoon: ")
             status = "Gecontacteerd"
-            prioriteit = get_valid_priority()
+            prioriteit = input("Prioriteit (Hoog/Medium/Laag): ").capitalize()
 
             data.append({
-                "bedrijf": bedrijf,
-                "contact": contact,
-                "email": email,
-                "telefoon": telefoon,
-                "status": status,
-                "prioriteit": prioriteit
+                "bedrijf": bedrijf, "contact": contact, "email": email,
+                "telefoon": telefoon, "status": status, "prioriteit": prioriteit
             })
             data_manager.save_data(data)
 
         elif keuze == '2':
-            if data:
-                try:
-                    idx = int(input("Voer het ID in: "))
-                    nieuwe_status = input("Nieuwe status: ")
-                    data[idx]['status'] = nieuwe_status
-                    data_manager.save_data(data)
-                except (ValueError, IndexError):
-                    print("[FOUT] Ongeldig ID.")
-                    input("Enter...")
+            try:
+                idx = int(input("ID voor status update: "))
+                data[idx]['status'] = input("Nieuwe status: ")
+                data_manager.save_data(data)
+            except: print("[FOUT] Ongeldig ID.")
 
         elif keuze == '3':
-            if data:
-                try:
-                    idx = int(input("Voer het ID in om te verwijderen: "))
-                    verwijderd = data.pop(idx)
-                    data_manager.save_data(data)
-                    print(f"[INFO] {verwijderd['bedrijf']} verwijderd.")
-                    input("Enter...")
-                except (ValueError, IndexError):
-                    print("[FOUT] ID niet gevonden.")
-                    input("Enter...")
+            try:
+                idx = int(input("ID voor verwijderen: "))
+                data.pop(idx)
+                data_manager.save_data(data)
+            except: print("[FOUT] Ongeldig ID.")
 
         elif keuze == '4':
-            exporteer_naar_pdf(data)
+            zoek_bedrijf(data)
 
         elif keuze == '5':
-            print("Veel succes met je sollicitaties!")
+            exporteer_naar_pdf(data)
+
+        elif keuze == '6':
             break
 
 if __name__ == "__main__":
