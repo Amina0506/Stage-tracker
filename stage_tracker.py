@@ -3,6 +3,10 @@ import datetime
 from tabulate import tabulate
 import data_manager
 from fpdf import FPDF
+from colorama import Fore, Style, init
+
+# Initialiseer colorama (zorgt dat kleuren werken op alle systemen)
+init(autoreset=True)
 
 def clear_screen():
     """Maakt de terminal leeg voor een propere interface."""
@@ -14,7 +18,7 @@ def toon_tabel(data, titel="ACTUEEL OVERZICHT"):
         print("\n[INFO] De tracker is nog leeg.")
         return
 
-    headers = ["ID", "BEDRIJF", "CONTACT", "EMAIL", "TELEFOON", "STATUS", "LAATST CONTACT", "ALERT"]
+    headers = ["ID", "BEDRIJF", "CONTACT", "EMAIL", "TELEFOON", "STATUS", "PRIORITEIT", "ALERT"]
     tabel_data = []
     vandaag = datetime.date.today()
 
@@ -28,10 +32,23 @@ def toon_tabel(data, titel="ACTUEEL OVERZICHT"):
 
         dagen_geleden = (vandaag - last_date).days
 
-        # Alert logica: als status 'Gecontacteerd' is en > 7 dagen geleden
+        # DEZE LOGICA IS NU 100% CORRECT VOOR JOUW 3 STATUSSEN
+        status_raw = d.get('status', '-')
+        status_check = status_raw.lower().strip() # Negeert hoofdletters en extra spaties
+
+        if "gecontacteerd" in status_check:
+            status = f"{Fore.YELLOW}{status_raw}{Style.RESET_ALL}"
+        elif "in gesprek" in status_check:
+            status = f"{Fore.MAGENTA}{status_raw}{Style.RESET_ALL}" # Paars
+        elif "bevestigd!" in status_check:
+            status = f"{Fore.BLUE}{status_raw}{Style.RESET_ALL}"    # Blauw
+        else:
+            status = status_raw
+
+        # Alert logica voor follow-up
         alert = ""
-        if d.get('status') == "Gecontacteerd" and dagen_geleden > 7:
-            alert = f"/!\ FOLLOW-UP ({dagen_geleden}d)"
+        if "gecontacteerd" in status_check and dagen_geleden > 7:
+            alert = f"{Fore.RED}{Style.BRIGHT}/!\\ FOLLOW-UP ({dagen_geleden}d){Style.RESET_ALL}"
 
         tabel_data.append([
             i,
@@ -39,12 +56,13 @@ def toon_tabel(data, titel="ACTUEEL OVERZICHT"):
             d.get('contact', '-'),
             d.get('email', '-'),
             d.get('telefoon', '-'),
-            d.get('status', '-'),
-            last_date_str,
+            status,
+            d.get('prioriteit', '-'),
             alert
         ])
 
     print(f"\n--- {titel} ---")
+    # Tabelbreedte aangepast zodat alles past
     print(tabulate(tabel_data, headers=headers, tablefmt="fancy_grid"))
 
 def zoek_bedrijf(data):
@@ -111,7 +129,7 @@ def main():
 
         print("\nOPTIES:")
         print("1. Toevoegen | 2. Update Status | 3. Verwijderen | 4. Zoeken | 5. Export PDF | 6. Exit")
-        print("-" * 90)
+        print("-" * 125)
 
         keuze = input("Maak een keuze: ")
 
@@ -134,8 +152,13 @@ def main():
         elif keuze == '2':
             try:
                 idx = int(input("ID voor status update: "))
-                data[idx]['status'] = input("Nieuwe status: ")
-                data[idx]['datum'] = str(datetime.date.today()) # Datum reset bij actie
+                print("\nBESCHIKBARE OPTIES (voor kleur):")
+                print(f"- {Fore.YELLOW}Gecontacteerd{Style.RESET_ALL}")
+                print(f"- {Fore.MAGENTA}In gesprek{Style.RESET_ALL}")
+                print(f"- {Fore.BLUE}Bevestigd!{Style.RESET_ALL}")
+
+                data[idx]['status'] = input("\nNieuwe status: ")
+                data[idx]['datum'] = str(datetime.date.today())
                 data_manager.save_data(data)
             except: print("[FOUT] Ongeldig ID.")
 
