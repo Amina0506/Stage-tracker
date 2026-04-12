@@ -32,16 +32,15 @@ def toon_tabel(data, titel="ACTUEEL OVERZICHT"):
 
         dagen_geleden = (vandaag - last_date).days
 
-        # DEZE LOGICA IS NU 100% CORRECT VOOR JOUW 3 STATUSSEN
         status_raw = d.get('status', '-')
-        status_check = status_raw.lower().strip() # Negeert hoofdletters en extra spaties
+        status_check = status_raw.lower().strip()
 
         if "gecontacteerd" in status_check:
             status = f"{Fore.YELLOW}{status_raw}{Style.RESET_ALL}"
         elif "in gesprek" in status_check:
-            status = f"{Fore.MAGENTA}{status_raw}{Style.RESET_ALL}" # Paars
+            status = f"{Fore.MAGENTA}{status_raw}{Style.RESET_ALL}"
         elif "bevestigd!" in status_check:
-            status = f"{Fore.BLUE}{status_raw}{Style.RESET_ALL}"    # Blauw
+            status = f"{Fore.BLUE}{status_raw}{Style.RESET_ALL}"
         else:
             status = status_raw
 
@@ -64,6 +63,28 @@ def toon_tabel(data, titel="ACTUEEL OVERZICHT"):
     print(f"\n--- {titel} ---")
     # Tabelbreedte aangepast zodat alles past
     print(tabulate(tabel_data, headers=headers, tablefmt="fancy_grid"))
+
+def sorteer_data(data):
+    """Sorteert de lijst op basis van prioriteit of status."""
+    print("\nSORTEER OPTIES:")
+    print("1. Prioriteit (Hoog -> Laag)")
+    print("2. Prioriteit (Laag -> Hoog)")
+    print("3. Status (Alfabetisch)")
+
+    keuze = input("\nHoe wil je sorteren? ")
+
+    if keuze == '1' or keuze == '2':
+        # Custom volgorde bepalen
+        volgorde = {"Hoog": 1, "Medium": 2, "Laag": 3}
+        # Sorteren (reverse=True als we Laag -> Hoog willen)
+        data.sort(key=lambda x: volgorde.get(x.get('prioriteit', 'Laag'), 4), reverse=(keuze == '2'))
+        print("\n[SUCCES] Gesorteerd op prioriteit.")
+    elif keuze == '3':
+        data.sort(key=lambda x: x.get('status', '').lower())
+        print("\n[SUCCES] Gesorteerd op status.")
+
+    data_manager.save_data(data) # Sla de nieuwe volgorde op
+    input("Druk op Enter...")
 
 def zoek_bedrijf(data):
     """Zoekt naar bedrijven of contactpersonen in de lijst."""
@@ -128,7 +149,7 @@ def main():
         toon_tabel(data)
 
         print("\nOPTIES:")
-        print("1. Toevoegen | 2. Update Status | 3. Verwijderen | 4. Zoeken | 5. Export PDF | 6. Exit")
+        print("1. Toevoegen | 2. Update Status | 3. Verwijderen | 4. Zoeken | 5. Export PDF | 6. Sorteren | 7. Exit")
         print("-" * 125)
 
         keuze = input("Maak een keuze: ")
@@ -176,6 +197,9 @@ def main():
             exporteer_naar_pdf(data)
 
         elif keuze == '6':
+            sorteer_data(data)
+
+        elif keuze == '7':
             break
 
 if __name__ == "__main__":
