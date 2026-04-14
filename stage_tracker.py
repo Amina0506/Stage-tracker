@@ -18,19 +18,17 @@ def toon_tabel(data, titel="ACTUEEL OVERZICHT"):
         print("\n[INFO] De tracker is nog leeg.")
         return
 
-    headers = ["ID", "BEDRIJF", "CONTACT", "EMAIL", "TELEFOON", "STATUS", "PRIORITEIT", "ALERT"]
+    headers = ["ID", "BEDRIJF", "CONTACT", "EMAIL", "TELEFOON", "STATUS", "PRIORITEIT", "START DATUM", "ALERT"]
     tabel_data = []
     vandaag = datetime.date.today()
 
-    # We halen de originele data op om de juiste index (ID) te behouden
     originele_data = data_manager.load_data()
 
     for d in data:
-        # Zoek het ID op basis van de index in de originele opgeslagen lijst
         try:
             echt_id = originele_data.index(d)
         except ValueError:
-            echt_id = "?" # Voor het geval er iets misgaat
+            echt_id = "?"
 
         last_date_str = d.get('datum', str(vandaag))
         try:
@@ -57,13 +55,14 @@ def toon_tabel(data, titel="ACTUEEL OVERZICHT"):
             alert = f"{Fore.RED}{Style.BRIGHT}/!\\ FOLLOW-UP ({dagen_geleden}d){Style.RESET_ALL}"
 
         tabel_data.append([
-            echt_id, # DIT IS NU HET VASTE ID
+            echt_id,
             d.get('bedrijf', '-'),
             d.get('contact', '-'),
             d.get('email', '-'),
             d.get('telefoon', '-'),
             status,
             d.get('prioriteit', '-'),
+            d.get('start_datum', '-'),
             alert
         ])
 
@@ -76,20 +75,19 @@ def sorteer_data(data):
     print("1. Prioriteit (Hoog -> Laag)")
     print("2. Prioriteit (Laag -> Hoog)")
     print("3. Status (Alfabetisch)")
+    print("4. Start Datum (Nieuwste eerst)")
 
     keuze = input("\nHoe wil je sorteren? ")
 
     if keuze == '1' or keuze == '2':
         volgorde = {"Hoog": 1, "Medium": 2, "Laag": 3}
         data.sort(key=lambda x: volgorde.get(x.get('prioriteit', 'Laag'), 4), reverse=(keuze == '2'))
-        print("\n[SUCCES] Tijdelijk gesorteerd op prioriteit.")
     elif keuze == '3':
         data.sort(key=lambda x: x.get('status', '').lower())
-        print("\n[SUCCES] Tijdelijk gesorteerd op status.")
+    elif keuze == '4':
+        data.sort(key=lambda x: x.get('start_datum', ''), reverse=True)
 
-    # We slaan de gesorteerde lijst NIET op, zodat de ID's in de JSON hetzelfde blijven
-    # Zo blijft ID 0 altijd hetzelfde bedrijf, waar het ook in de tabel staat.
-    input("\nSortering toegepast op huidige weergave. Druk op Enter...")
+    input("\nSortering toegepast. Druk op Enter...")
 
 def zoek_bedrijf(data):
     """Zoekt naar bedrijven of contactpersonen in de lijst."""
@@ -101,38 +99,30 @@ def zoek_bedrijf(data):
         toon_tabel(resultaten, titel=f"ZOEKRESULTATEN VOOR: '{zoekterm}'")
     else:
         print(f"\n[!] Geen resultaten gevonden voor '{zoekterm}'.")
-
-    input("\nDruk op Enter om terug te gaan...")
+    input("\nDruk op Enter...")
 
 def exporteer_naar_pdf(data):
     """Genereert een PDF rapport."""
-    if not data:
-        print("[FOUT] Geen data om te exporteren.")
-        return
-
+    if not data: return
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, txt="Gedetailleerd Stage-Tracker Overzicht", ln=True, align='C')
     pdf.ln(10)
 
-    pdf.set_font("Arial", 'B', 10)
-    pdf.cell(35, 10, "Bedrijf", 1)
-    pdf.cell(35, 10, "Contact", 1)
-    pdf.cell(50, 10, "Email", 1)
-    pdf.cell(35, 10, "Telefoon", 1)
-    pdf.cell(45, 10, "Status", 1)
-    pdf.cell(30, 10, "Datum", 1)
+    pdf.set_font("Arial", 'B', 8)
+    cols = ["Bedrijf", "Contact", "Email", "Telefoon", "Status", "Start Datum"]
+    for col in cols: pdf.cell(45, 10, col, 1)
     pdf.ln()
 
-    pdf.set_font("Arial", size=9)
+    pdf.set_font("Arial", size=8)
     for d in data:
-        pdf.cell(35, 10, str(d.get('bedrijf', '-')), 1)
-        pdf.cell(35, 10, str(d.get('contact', '-')), 1)
-        pdf.cell(50, 10, str(d.get('email', '-')), 1)
-        pdf.cell(35, 10, str(d.get('telefoon', '-')), 1)
+        pdf.cell(45, 10, str(d.get('bedrijf', '-')), 1)
+        pdf.cell(45, 10, str(d.get('contact', '-')), 1)
+        pdf.cell(45, 10, str(d.get('email', '-')), 1)
+        pdf.cell(45, 10, str(d.get('telefoon', '-')), 1)
         pdf.cell(45, 10, str(d.get('status', '-')), 1)
-        pdf.cell(30, 10, str(d.get('datum', '-')), 1)
+        pdf.cell(45, 10, str(d.get('start_datum', '-')), 1)
         pdf.ln()
 
     pdf.output("Stage_Rapport.pdf")
@@ -140,7 +130,6 @@ def exporteer_naar_pdf(data):
     input("Enter...")
 
 def main():
-    # Belangrijk: we werken met een lokale 'weergave' van de data
     originele_data = data_manager.load_data()
 
     while True:
@@ -153,7 +142,7 @@ def main():
 
         print("\nOPTIES:")
         print("1. Toevoegen | 2. Update Status | 3. Verwijderen | 4. Zoeken | 5. Export PDF | 6. Sorteren | 7. Exit")
-        print("-" * 125)
+        print("-" * 150)
 
         keuze = input("Maak een keuze: ")
 
@@ -169,6 +158,7 @@ def main():
             nieuwe_entry = {
                 "bedrijf": bedrijf, "contact": contact, "email": email,
                 "telefoon": telefoon, "status": status, "prioriteit": prioriteit,
+                "start_datum": vandaag,
                 "datum": vandaag
             }
             originele_data.append(nieuwe_entry)
