@@ -101,6 +101,23 @@ def zoek_bedrijf(data):
         print(f"\n[!] Geen resultaten gevonden voor '{zoekterm}'.")
     input("\nDruk op Enter...")
 
+def bekijk_nota(data):
+    """Toont en bewerkt nota's voor een specifiek ID."""
+    try:
+        idx = int(input("\nVoer het ID in om de nota te bekijken/bewerken: "))
+        bedrijf = data[idx]
+        print(f"\n--- NOTA VOOR {bedrijf['bedrijf']} ---")
+        print(f"Huidige nota: {bedrijf.get('nota', 'Geen nota gevonden.')}")
+
+        nieuwe_nota = input("\nNieuwe nota (laat leeg om niet te wijzigen): ")
+        if nieuwe_nota:
+            data[idx]['nota'] = nieuwe_nota
+            data_manager.save_data(data)
+            print("[SUCCES] Nota bijgewerkt.")
+    except:
+        print("[FOUT] Ongeldig ID.")
+    input("\nEnter om terug te gaan...")
+
 def exporteer_naar_pdf(data):
     """Genereert een PDF rapport."""
     if not data: return
@@ -141,7 +158,7 @@ def main():
         toon_tabel(originele_data)
 
         print("\nOPTIES:")
-        print("1. Toevoegen | 2. Update Status | 3. Verwijderen | 4. Zoeken | 5. Export PDF | 6. Sorteren | 7. Exit")
+        print("1. Toevoegen | 2. Update Status | 3. Verwijderen | 4. Zoeken | 5. Export PDF | 6. Sorteren | 7. Nota's | 8. Exit")
         print("-" * 150)
 
         keuze = input("Maak een keuze: ")
@@ -153,13 +170,15 @@ def main():
             telefoon = input("Telefoon: ")
             status = "Gecontacteerd"
             prioriteit = input("Prioriteit (Hoog/Medium/Laag): ").capitalize()
+            nota = input("Nota (optioneel): ")
             vandaag = str(datetime.date.today())
 
             nieuwe_entry = {
                 "bedrijf": bedrijf, "contact": contact, "email": email,
                 "telefoon": telefoon, "status": status, "prioriteit": prioriteit,
                 "start_datum": vandaag,
-                "datum": vandaag
+                "datum": vandaag,
+                "nota": nota
             }
             originele_data.append(nieuwe_entry)
             data_manager.save_data(originele_data)
@@ -194,6 +213,9 @@ def main():
             sorteer_data(originele_data)
 
         elif keuze == '7':
+            bekijk_nota(originele_data)
+
+        elif keuze == '8':
             break
 
 if __name__ == "__main__":
